@@ -1,0 +1,2 @@
+admin_password=KAWSAR0912
+global_duration=1440

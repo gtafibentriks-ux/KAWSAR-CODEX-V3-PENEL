@@ -1,0 +1,12 @@
+flask
+flask-socketio
+requests
+eventlet
+gunicorn
+psutil
+PyJWT
+urllib3
+pytz
+aiohttp
+protobuf
+pycryptodome
