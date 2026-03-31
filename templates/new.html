@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAWSAR_CODEX | Master Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* ── Variables ── */
+        :root {
+            --sky:     #38bdf8;
+            --sky2:    #00e5ff;
+            --sky3:    #0ea5e9;
+            --glow:    rgba(56,189,248,0.35);
+            --green:   #4ade80;
+            --red:     #f87171;
+            --orange:  #fb923c;
+            --purple:  #a78bfa;
+            --bg:      #030609;
+            --card:    rgba(8,18,28,0.88);
+            --border:  rgba(56,189,248,0.15);
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            background-color: var(--bg);
+            font-family: 'Rajdhani', sans-serif;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* ════════════════════════════
+           ANIMATED BACKGROUND
+        ════════════════════════════ */
+
+        /* Moving grid */
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+            background-size: 44px 44px;
+            animation: gridMove 18s linear infinite;
+        }
+        @keyframes gridMove {
+            from { background-position: 0 0; }
+            to   { background-position: 44px 44px; }
+        }
+
+        /* Scanlines */
+        body::after {
+            content: '';
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0px, transparent 3px,
+                rgba(56,189,248,0.018) 3px, rgba(56,189,248,0.018) 4px
+            );
+        }
+
+        /* Floating glow orbs */
+        #orb1, #orb2, #orb3 {
+            position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+            filter: blur(70px);
+        }
+        #orb1 { width:380px; height:380px; background:rgba(56,189,248,0.10); top:-120px; left:-100px; animation: orb1 20s ease-in-out infinite; }
+        #orb2 { width:260px; height:260px; background:rgba(0,229,255,0.08);  bottom:-80px; right:-80px; animation: orb2 16s ease-in-out infinite; }
+        #orb3 { width:180px; height:180px; background:rgba(167,139,250,0.07); top:45%; left:55%; animation: orb3 12s ease-in-out infinite; }
+        @keyframes orb1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(50px,70px)} }
+        @keyframes orb2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-40px,-50px)} }
+        @keyframes orb3 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(25px,-35px)} }
+
+        /* Particles */
+        #particles { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+        .ptc {
+            position:absolute; border-radius:50%; background:var(--sky);
+            animation: ptcRise linear infinite; opacity:0;
+        }
+        @keyframes ptcRise {
+            0%   { transform:translateY(108vh) scale(0); opacity:0; }
+            8%   { opacity:0.7; }
+            88%  { opacity:0.3; }
+            100% { transform:translateY(-5vh) scale(1.2); opacity:0; }
+        }
+
+        /* Data rain */
+        .rain-line {
+            position:fixed; top:0; width:1px; pointer-events:none; z-index:0;
+            background: linear-gradient(to bottom, transparent 0%, var(--sky) 50%, transparent 100%);
+            animation: rainFall linear infinite; opacity:0;
+        }
+        @keyframes rainFall {
+            0%   { transform:translateY(-100%); opacity:0; }
+            15%  { opacity:0.18; }
+            85%  { opacity:0.10; }
+            100% { transform:translateY(110vh); opacity:0; }
+        }
+
+        /* Corner brackets */
+        .corner { position:fixed; width:24px; height:24px; z-index:1; pointer-events:none; animation:cornerPulse 3s ease-in-out infinite; }
+        .corner::before, .corner::after { content:''; position:absolute; background:var(--sky); box-shadow:0 0 6px var(--sky); }
+        .corner::before { width:2px; height:100%; }
+        .corner::after  { width:100%; height:2px; }
+        .c-tl { top:12px; left:12px; }
+        .c-tr { top:12px; right:12px; transform:scaleX(-1); }
+        .c-bl { bottom:12px; left:12px; transform:scaleY(-1); }
+        .c-br { bottom:12px; right:12px; transform:scale(-1,-1); }
+        @keyframes cornerPulse { 0%,100%{opacity:0.3} 50%{opacity:0.9} }
+
+        /* ════════════════════════════
+           CARDS
+        ════════════════════════════ */
+        .card-bg {
+            background: var(--card);
+            border-radius: 15px;
+            border: 1px solid rgba(56,189,248,0.12);
+            margin-bottom: 12px;
+            backdrop-filter: blur(12px);
+            transition: 0.3s;
+            position: relative; overflow: hidden;
+        }
+        .card-bg::before {
+            content:''; position:absolute; inset:0; opacity:0;
+            background:linear-gradient(135deg, rgba(56,189,248,0.05), transparent 55%);
+            transition:0.3s; pointer-events:none;
+        }
+        .card-bg:hover { border-color:rgba(56,189,248,0.30); box-shadow:0 0 25px rgba(56,189,248,0.07); }
+        .card-bg:hover::before { opacity:1; }
+
+        /* RGB border on hover (original behavior) */
+        @keyframes rgb-glow {
+            0%   { border-color:var(--sky);    box-shadow:0 0 8px var(--sky); }
+            33%  { border-color:var(--sky2);   box-shadow:0 0 8px var(--sky2); }
+            66%  { border-color:var(--green);  box-shadow:0 0 8px var(--green); }
+            100% { border-color:var(--sky);    box-shadow:0 0 8px var(--sky); }
+        }
+        .card-bg:hover { animation: rgb-glow 2.5s infinite linear; }
+
+        /* ════════════════════════════
+           SIDEBAR
+        ════════════════════════════ */
+        .sidebar {
+            position: fixed; left: -100%; top: 0; width: 280px; height: 100%;
+            background: rgba(3,8,14,0.97);
+            backdrop-filter: blur(20px);
+            z-index: 1000; transition: 0.4s cubic-bezier(0.4,0,0.2,1);
+            border-right: 1px solid var(--border);
+        }
+        .sidebar::after {
+            content:''; position:absolute; top:0; right:-1px; bottom:0; width:1px;
+            background:linear-gradient(to bottom, transparent, var(--sky), var(--sky2), var(--sky), transparent);
+            opacity:0.5;
+        }
+        .sidebar.active { left: 0; }
+
+        .overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.8); z-index: 999;
+            backdrop-filter: blur(4px);
+        }
+        .overlay.active { display: block; }
+
+        /* ════════════════════════════
+           BUTTONS
+        ════════════════════════════ */
+        .btn-op {
+            padding: 10px; border-radius: 8px; font-weight: bold;
+            font-size: 13px; display: flex; align-items: center;
+            justify-content: center; gap: 5px; transition: 0.25s;
+            width: 100%; text-transform: uppercase; letter-spacing: 1px;
+            cursor: pointer; border: 1px solid; font-family: 'Rajdhani', sans-serif;
+            position: relative; overflow: hidden;
+        }
+        /* Shine sweep on hover */
+        .btn-op::after {
+            content:''; position:absolute; top:0; left:-100%; width:60%; height:100%;
+            background:linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+            transition:0.4s;
+        }
+        .btn-op:hover::after { left:150%; }
+        .btn-op:active { transform:scale(0.97); }
+
+        .btn-start   { background:rgba(13,46,33,0.6);  color:var(--green);  border-color:rgba(74,222,128,0.22); }
+        .btn-start:hover { background:rgba(20,83,45,0.8); box-shadow:0 0 18px rgba(74,222,128,0.28); border-color:rgba(74,222,128,0.5); }
+
+        .btn-stop    { background:rgba(36,10,10,0.6); color:var(--red);    border-color:rgba(248,113,113,0.22); }
+        .btn-stop:hover  { background:rgba(69,26,26,0.8); box-shadow:0 0 18px rgba(248,113,113,0.28); border-color:rgba(248,113,113,0.5); }
+
+        .btn-restart { background:rgba(40,20,5,0.6);  color:var(--orange); border-color:rgba(251,146,60,0.22); }
+        .btn-restart:hover { background:rgba(80,40,10,0.8); box-shadow:0 0 18px rgba(251,146,60,0.25); border-color:rgba(251,146,60,0.5); }
+
+        .btn-force   { background:rgba(28,10,10,0.6); color:#fca5a5;       border-color:rgba(252,165,165,0.18); }
+        .btn-force:hover { background:rgba(50,15,15,0.8); }
+
+        .btn-util    { background:rgba(8,18,28,0.7);  color:#5a8aa4;       border-color:rgba(56,189,248,0.10); }
+        .btn-util:hover { border-color:rgba(56,189,248,0.40); color:var(--sky); background:rgba(56,189,248,0.08); box-shadow:0 0 12px rgba(56,189,248,0.12); }
+
+        /* ════════════════════════════
+           TOAST
+        ════════════════════════════ */
+        #toast {
+            position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+            background: rgba(3,8,14,0.97); padding: 12px 25px; border-radius: 30px;
+            border: 1px solid var(--sky); z-index: 2000;
+            transition: 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+            color: var(--sky); font-size: 13px; font-weight: bold;
+            font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;
+            box-shadow: 0 0 30px rgba(56,189,248,0.25), 0 8px 32px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+        #toast.show { top: 20px; }
+
+        /* ════════════════════════════
+           ACTIVE TAB
+        ════════════════════════════ */
+        .active-tab {
+            color: var(--sky) !important;
+            background: rgba(56,189,248,0.09);
+            border-left: 3px solid var(--sky);
+            box-shadow: inset 4px 0 14px rgba(56,189,248,0.06);
+        }
+
+        /* ════════════════════════════
+           CONSOLE
+        ════════════════════════════ */
+        .console-box {
+            background: #000305;
+            border-radius: 0 0 15px 15px;
+            padding: 15px; height: 300px;
+            overflow-y: auto;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px; color: #00e5b8;
+            border-top: 1px solid rgba(56,189,248,0.10);
+            scroll-behavior: smooth; position: relative;
+        }
+        /* CRT scanline overlay */
+        .console-box::after {
+            content:''; position:absolute; inset:0; pointer-events:none;
+            background:repeating-linear-gradient(
+                to bottom, transparent 0, transparent 2px,
+                rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 3px
+            );
+        }
+        .console-box .log-entry {
+            margin: 2px 0; padding-left: 12px; position: relative; line-height: 1.5;
+            animation: logIn 0.2s ease;
+        }
+        .console-box .log-entry::before { content:'›'; position:absolute; left:0; color:rgba(56,189,248,0.5); }
+        @keyframes logIn { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:none} }
+
+        /* Blinking cursor */
+        .blink-cursor {
+            display:inline-block; width:7px; height:11px;
+            background:var(--sky); margin-left:3px; vertical-align:middle;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #020508; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(var(--sky3), var(--sky2)); border-radius: 4px; }
+
+        /* ════════════════════════════
+           ICON BOX
+        ════════════════════════════ */
+        .icon-box {
+            background: rgba(8,20,32,0.9);
+            width: 45px; height: 45px; border-radius: 10px;
+            border: 1px solid rgba(56,189,248,0.12);
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.3s; font-size: 20px;
+        }
+        .icon-box:hover { border-color:rgba(56,189,248,0.40); box-shadow:0 0 14px rgba(56,189,248,0.18); transform:scale(1.06); }
+
+        /* ════════════════════════════
+           SWITCH
+        ════════════════════════════ */
+        .switch { position:relative; display:inline-block; width:34px; height:20px; }
+        .switch input { opacity:0; width:0; height:0; }
+        .slider {
+            position:absolute; cursor:pointer; inset:0;
+            background:#0d1a22; border:1px solid #1a3040;
+            transition:.35s; border-radius:20px;
+        }
+        .slider:before {
+            position:absolute; content:""; height:14px; width:14px;
+            left:2px; bottom:2px; background:#1a4060;
+            transition:.35s; border-radius:50%;
+        }
+        input:checked + .slider {
+            background:rgba(56,189,248,0.18);
+            border-color:rgba(56,189,248,0.45);
+            box-shadow: 0 0 10px rgba(56,189,248,0.20);
+        }
+        input:checked + .slider:before { transform:translateX(14px); background:var(--sky); box-shadow:0 0 8px var(--sky); }
+
+        /* ════════════════════════════
+           INPUTS
+        ════════════════════════════ */
+        input, select {
+            background: rgba(4,12,20,0.9) !important;
+            border: 1px solid rgba(56,189,248,0.14) !important;
+            color: #c0dcef !important; outline: none !important; transition: 0.25s !important;
+        }
+        input:focus, select:focus {
+            border-color: rgba(56,189,248,0.50) !important;
+            box-shadow: 0 0 14px rgba(56,189,248,0.10) !important;
+        }
+        input::placeholder { color: #1e3a50 !important; }
+
+        /* ════════════════════════════
+           RGB TEXT
+        ════════════════════════════ */
+        .rgb-text {
+            background: linear-gradient(90deg, var(--sky), var(--sky2), var(--purple), var(--sky));
+            background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            animation: rgbShift 3s linear infinite;
+        }
+        @keyframes rgbShift { to{ background-position:200% center; } }
+
+        /* ════════════════════════════
+           HEADER
+        ════════════════════════════ */
+        header {
+            position: sticky; top:0; z-index: 200;
+            background: rgba(3,6,10,0.94); backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--border);
+            animation: headerDrop 0.5s ease forwards;
+        }
+        @keyframes headerDrop { from{transform:translateY(-100%);opacity:0} to{transform:none;opacity:1} }
+        /* Animated glow bottom line */
+        header::after {
+            content:''; position:absolute; bottom:0; left:0; right:0; height:1px;
+            background:linear-gradient(90deg, transparent 0%, var(--sky) 30%, var(--sky2) 50%, var(--sky) 70%, transparent 100%);
+            animation: glowSweep 4s ease-in-out infinite;
+        }
+        @keyframes glowSweep { 0%,100%{opacity:0.4} 50%{opacity:1; box-shadow:0 0 8px var(--sky);} }
+
+        /* Brand flicker */
+        .brand-flicker {
+            font-family: 'Orbitron', monospace;
+            animation: flicker 5s ease-in-out infinite;
+        }
+        @keyframes flicker {
+            0%,94%,100%{opacity:1} 95%{opacity:0.6} 97%{opacity:1} 98%{opacity:0.75}
+        }
+
+        /* ════════════════════════════
+           STATUS TEXT
+        ════════════════════════════ */
+        #stext {
+            transition: color 0.4s, text-shadow 0.4s;
+        }
+        #stext.running {
+            color: var(--green) !important;
+            text-shadow: 0 0 10px rgba(74,222,128,0.5);
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+        @keyframes statusPulse { 0%,100%{text-shadow:0 0 8px rgba(74,222,128,0.4)} 50%{text-shadow:0 0 18px rgba(74,222,128,0.8)} }
+
+        /* ════════════════════════════
+           TIMER GLOW
+        ════════════════════════════ */
+        #timer-display {
+            transition: text-shadow 0.4s;
+            font-family: 'Orbitron', monospace;
+        }
+        #timer-display.active {
+            color: var(--sky) !important;
+            text-shadow: 0 0 15px rgba(56,189,248,0.7), 0 0 30px rgba(56,189,248,0.3);
+            animation: timerGlow 2s ease-in-out infinite;
+        }
+        @keyframes timerGlow { 0%,100%{text-shadow:0 0 12px rgba(56,189,248,0.5)} 50%{text-shadow:0 0 28px rgba(0,229,255,0.9)} }
+
+        /* ════════════════════════════
+           NAV ITEMS hover effect
+        ════════════════════════════ */
+        nav > div {
+            position: relative; overflow: hidden; transition: 0.25s;
+        }
+        nav > div::before {
+            content:''; position:absolute; left:0; top:0; bottom:0; width:0;
+            background:linear-gradient(90deg, rgba(56,189,248,0.12), transparent);
+            transition:0.3s;
+        }
+        nav > div:hover::before { width:100%; }
+
+        /* ════════════════════════════
+           PAGE TRANSITION
+        ════════════════════════════ */
+        .page-in { animation: pgIn 0.3s ease; }
+        @keyframes pgIn { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:none} }
+
+        main { padding: 16px; max-width: 540px; margin: 0 auto; position: relative; z-index: 10; }
+    </style>
+</head>
+<body>
+
+<!-- Background effects -->
+<div id="orb1"></div>
+<div id="orb2"></div>
+<div id="orb3"></div>
+<div id="particles"></div>
+<div class="corner c-tl"></div>
+<div class="corner c-tr"></div>
+<div class="corner c-bl"></div>
+<div class="corner c-br"></div>
+
+<div id="toast">⚡ SYSTEM ONLINE</div>
+<div id="overlay" class="overlay" onclick="toggleMenu()"></div>
+
+<!-- ══════════ BLOCKED SCREEN ══════════ -->
+<div id="blocked-screen" style="display:none; position:fixed; inset:0; z-index:9999;
+    background:#000305; flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Orbitron',monospace;">
+    <!-- animated bg -->
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+        <div class="blk-orb" style="width:400px;height:400px;top:-100px;left:-100px;animation-delay:0s;"></div>
+        <div class="blk-orb" style="width:300px;height:300px;bottom:-80px;right:-80px;animation-delay:3s;"></div>
+    </div>
+    <style>
+        .blk-orb{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,0.18),transparent 70%);filter:blur(60px);animation:blkOrb 8s ease-in-out infinite;}
+        @keyframes blkOrb{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+        .blk-title{font-size:clamp(14px,4vw,22px);font-weight:900;letter-spacing:3px;text-align:center;
+            background:linear-gradient(90deg,#38bdf8,#00e5ff,#38bdf8);background-size:200%;
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+            animation:blkRgb 2s linear infinite,blkPulse 1.5s ease-in-out infinite;}
+        @keyframes blkRgb{to{background-position:200% center}}
+        @keyframes blkPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.4)}}
+        .blk-icon{font-size:80px;animation:blkIconSpin 4s ease-in-out infinite;}
+        @keyframes blkIconSpin{0%,100%{transform:rotate(-5deg) scale(1)}50%{transform:rotate(5deg) scale(1.1)}}
+        .blk-line{width:120px;height:2px;margin:16px auto;
+            background:linear-gradient(90deg,transparent,#38bdf8,#00e5ff,#38bdf8,transparent);
+            animation:blkLinePulse 2s ease-in-out infinite;}
+        @keyframes blkLinePulse{0%,100%{opacity:0.5;width:80px}50%{opacity:1;width:180px}}
+        .blk-badge{padding:8px 20px;border-radius:30px;border:1px solid rgba(56,189,248,0.4);
+            font-size:11px;letter-spacing:3px;color:#38bdf8;font-family:'Share Tech Mono',monospace;
+            background:rgba(56,189,248,0.06);animation:blkBadge 2s ease-in-out infinite;margin-top:10px;}
+        @keyframes blkBadge{0%,100%{box-shadow:0 0 10px rgba(56,189,248,0.2)}50%{box-shadow:0 0 25px rgba(56,189,248,0.5)}}
+        .blk-scan{position:absolute;top:-100%;left:0;right:0;height:3px;
+            background:linear-gradient(90deg,transparent,#38bdf8,transparent);
+            animation:blkScan 3s linear infinite;opacity:0.4;}
+        @keyframes blkScan{0%{top:-3%}100%{top:103%}}
+    </style>
+    <div class="blk-scan"></div>
+    <div class="blk-icon">🚫</div>
+    <div class="blk-line"></div>
+    <div class="blk-title">YOU ARE BLOCKED BY THE<br>ADMIN OR DEVELOPER</div>
+    <div class="blk-badge">KAWSAR_CODEX</div>
+    <div style="margin-top:18px;font-size:9px;letter-spacing:4px;color:rgba(56,189,248,0.3);font-family:'Share Tech Mono',monospace;">ACCESS DENIED · CONTACT SUPPORT</div>
+</div>
+
+<!-- ══════════ SIDEBAR ══════════ -->
+<div id="sidebar" class="sidebar p-6">
+    <div class="flex items-center gap-3 mb-10 border-b pb-4" style="border-color:rgba(56,189,248,0.10);">
+        <span class="text-3xl" style="filter:drop-shadow(0 0 10px var(--sky)); animation:logoBounce 4s ease-in-out infinite;">🤖</span>
+        <div>
+            <h1 class="text-xl font-bold brand-flicker" style="color:var(--sky); letter-spacing:1px;">KAWSAR_CODEX</h1>
+            <p style="font-family:'Share Tech Mono',monospace; font-size:9px; color:#1e4060; letter-spacing:2px;">BOT MASTER PANEL</p>
+        </div>
+    </div>
+    <nav class="space-y-2">
+        <div onclick="showPage('control')"  class="p-4 rounded-xl active-tab cursor-pointer" id="m-control"  style="color:var(--sky);">🎮 Control Panel</div>
+        <div onclick="showPage('accounts')" class="p-4 rounded-xl text-gray-400 cursor-pointer hover:bg-white/5" id="m-accounts">👥 Accounts</div>
+        <div onclick="showPage('friends')"  class="p-4 rounded-xl text-gray-400 cursor-pointer hover:bg-white/5" id="m-friends">👤 Friends</div>
+        <div onclick="showPage('clan')"     class="p-4 rounded-xl text-gray-400 cursor-pointer hover:bg-white/5" id="m-clan">🛡️ Clan Search</div>
+        <div onclick="showPage('admin')"    class="p-4 rounded-xl text-gray-400 cursor-pointer hover:bg-white/5" id="m-admin">🛠️ Admin Panel</div>
+    </nav>
+</div>
+
+<!-- ══════════ HEADER ══════════ -->
+<header class="p-5 flex justify-between items-center sticky top-0 z-50">
+    <div class="flex items-center gap-4">
+        <button onclick="toggleMenu()" class="text-2xl transition hover:scale-110" style="color:var(--sky); text-shadow:0 0 12px var(--sky);">☰</button>
+        <h1 id="page-title" class="text-xl font-bold flex items-center gap-2 tracking-tighter uppercase brand-flicker" style="color:var(--sky);">
+            ⚡ Control Panel
+        </h1>
+    </div>
+    <div class="p-2 px-4 rounded-xl text-[10px] font-bold uppercase tracking-widest"
+         style="background:rgba(8,18,28,0.9); border:1px solid rgba(56,189,248,0.30); color:var(--sky); font-family:'Share Tech Mono',monospace;
+                box-shadow:0 0 12px rgba(56,189,248,0.12); animation:badgePulse 2s ease-in-out infinite;">
+        V3.0
+    </div>
+</header>
+<style>
+@keyframes logoBounce { 0%,40%,100%{transform:rotate(0)} 45%{transform:rotate(10deg)} 50%{transform:rotate(-5deg)} 55%{transform:rotate(4deg)} 60%{transform:rotate(0)} }
+@keyframes badgePulse { 0%,100%{box-shadow:0 0 8px rgba(56,189,248,0.12)} 50%{box-shadow:0 0 18px rgba(56,189,248,0.30)} }
+</style>
+
+<!-- ══════════ MAIN ══════════ -->
+<main>
+
+    <!-- ▓ PAGE: CONTROL ▓ -->
+    <div id="page-control" class="space-y-3">
+
+        <!-- Status card -->
+        <div class="card-bg p-4 flex justify-between items-center group">
+            <div>
+                <p class="text-[10px] font-bold uppercase tracking-widest" style="color:#1e4060; font-family:'Share Tech Mono',monospace;">Bot Status</p>
+                <span id="stext" class="text-red-500 text-xs font-bold uppercase">Stopped</span>
+            </div>
+            <div class="icon-box group-hover:rotate-12 transition-transform" style="color:var(--red);">🗣️</div>
+        </div>
+
+        <!-- Uptime card -->
+        <div class="card-bg p-4 flex justify-between items-center group">
+            <div>
+                <p class="text-[10px] font-bold uppercase tracking-widest" style="color:#1e4060; font-family:'Share Tech Mono',monospace;">Uptime</p>
+                <h3 id="timer-display" class="text-xl font-bold font-mono">0h 0m 0s</h3>
+            </div>
+            <div class="icon-box group-hover:scale-110 transition-transform" style="color:var(--sky);">🕒</div>
+        </div>
+
+        <!-- Operations card -->
+        <div class="card-bg overflow-hidden shadow-2xl">
+            <div class="p-4 border-b flex justify-between items-center" style="border-color:rgba(56,189,248,0.08); background:rgba(56,189,248,0.03);">
+                <h3 class="text-xs font-bold uppercase tracking-widest" style="color:var(--sky); font-family:'Share Tech Mono',monospace;">🎮 Bot Operations</h3>
+                <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <!-- Row 1: Start / Stop / Restart -->
+            <div class="p-4 grid grid-cols-3 gap-2">
+                <button onclick="control('start')"   class="btn-op btn-start">▶ Start</button>
+                <button onclick="control('stop')"    class="btn-op btn-stop">■ Stop</button>
+                <button onclick="control('restart')" class="btn-op btn-restart">🔄 Restart</button>
+            </div>
+            <!-- Row 2: Force Kill / Clear / Scroll -->
+            <div class="px-4 pb-4 grid grid-cols-3 gap-2">
+                <button onclick="msg('FORCE KILL SENT')" class="btn-op btn-force">🚫 Force Kill</button>
+                <button onclick="document.getElementById('logs').innerHTML=''" class="btn-op btn-util">🗑 Clear</button>
+                <button onclick="msg('AUTO SCROLL ON')"  class="btn-op btn-util">↕ Scroll</button>
+            </div>
+            <!-- Console Header -->
+            <div style="background:linear-gradient(90deg,rgba(0,5,10,0.98),rgba(3,14,25,0.98)); border-top:1px solid rgba(56,189,248,0.18); border-bottom:1px solid rgba(56,189,248,0.18); padding:8px 15px; display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; gap:5px;">
+                    <span style="width:9px;height:9px;border-radius:50%;background:#f87171;display:inline-block;box-shadow:0 0 6px #f87171;"></span>
+                    <span style="width:9px;height:9px;border-radius:50%;background:#fb923c;display:inline-block;box-shadow:0 0 6px #fb923c;"></span>
+                    <span style="width:9px;height:9px;border-radius:50%;background:#4ade80;display:inline-block;box-shadow:0 0 6px #4ade80;"></span>
+                </div>
+                <span style="font-family:'Orbitron',monospace; font-size:11px; font-weight:900; letter-spacing:3px; color:var(--sky); text-shadow:0 0 14px var(--sky),0 0 28px rgba(56,189,248,0.4); flex:1; text-align:center; text-transform:uppercase;">⚡ KAWSAR_CODEX BOT CONSOLE ⚡</span>
+                <span style="width:9px;height:9px;border-radius:50%;background:var(--sky2);display:inline-block;box-shadow:0 0 8px var(--sky2);animation:blink 1.2s step-end infinite;"></span>
+            </div>
+            <!-- Console -->
+            <div id="logs" class="console-box">
+                <div class="log-entry" style="color:var(--sky);">[SYSTEM] Console Initialized — KAWSAR_CODEX V3 Ready<span class="blink-cursor"></span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ▓ PAGE: ACCOUNTS ▓ -->
+    <div id="page-accounts" class="hidden space-y-4">
+        <div class="card-bg p-6" style="border-top:2px solid var(--sky);">
+            <h3 class="font-bold mb-4 uppercase text-xs tracking-widest" style="color:var(--sky); font-family:'Share Tech Mono',monospace;">⚙️ Account Setup</h3>
+            <input id="name" type="text"     placeholder="Bot Nickname" class="w-full p-4 rounded-xl mb-3 outline-none">
+            <input id="uid"  type="text"     placeholder="Player UID"   class="w-full p-4 rounded-xl mb-3 outline-none">
+            <input id="pw"   type="password" placeholder="Password"     class="w-full p-4 rounded-xl mb-4 outline-none">
+            <button onclick="saveAcc()" class="btn-op w-full p-4"
+                style="color:#fff; background:rgba(56,189,248,0.18); border-color:rgba(56,189,248,0.45); box-shadow:0 0 18px rgba(56,189,248,0.15);">
+                💾 SAVE CONFIGURATION
+            </button>
+        </div>
+    </div>
+
+    <!-- ▓ PAGE: FRIENDS ▓ -->
+    <div id="page-friends" class="hidden space-y-4">
+        <div class="card-bg p-6" style="border-top:2px solid var(--sky2);">
+            <div class="flex gap-2 mb-4 bg-black/50 p-1 rounded-xl border" style="border-color:rgba(56,189,248,0.08);">
+                <button onclick="tabFriend('check')" id="tab-check"
+                    class="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+                    style="background:rgba(56,189,248,0.18); color:var(--sky); border:1px solid rgba(56,189,248,0.35);">LIST</button>
+                <button onclick="tabFriend('add')" id="tab-add"
+                    class="flex-1 py-2 rounded-lg text-gray-500 text-xs font-bold transition-all">ADD</button>
+            </div>
+            <div id="sec-check" class="space-y-3">
+                <button onclick="fetchFriendList()" class="w-full btn-op btn-util">📋 FETCH LIST</button>
+                <div id="nickname-list" class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1"></div>
+            </div>
+            <div id="sec-add" class="hidden space-y-3">
+                <input id="target-uid" type="text" placeholder="Target UID" class="w-full p-4 rounded-xl outline-none">
+                <button onclick="addFriend()" class="btn-op w-full"
+                    style="color:#fff; background:rgba(56,189,248,0.18); border-color:rgba(56,189,248,0.40);">➕ SEND REQUEST</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ▓ PAGE: CLAN ▓ -->
+    <div id="page-clan" class="hidden space-y-4">
+        <div class="card-bg p-6" style="border-top:2px solid var(--green);">
+            <h3 class="font-bold mb-4 uppercase text-xs tracking-widest" style="color:var(--sky); font-family:'Share Tech Mono',monospace;">🛡️ Clan Search</h3>
+            <div class="space-y-3">
+                <input id="guild-id" type="text" placeholder="Enter Guild ID" class="w-full p-4 rounded-xl outline-none">
+                <select id="region" class="w-full p-4 rounded-xl text-sm outline-none">
+                    <option value="bd">Bangladesh (BD)</option>
+                    <option value="ind">India (IND)</option>
+                    <option value="sg">Singapore (SG)</option>
+                    <option value="br">Brazil (BR)</option>
+                    <option value="id">Indonesia (ID)</option>
+                    <option value="th">Thailand (TH)</option>
+                    <option value="vn">Vietnam (VN)</option>
+                    <option value="me">Middle East (ME)</option>
+                    <option value="pk">Pakistan (PK)</option>
+                    <option value="na">North America (NA)</option>
+                    <option value="sac">South America (SAC)</option>
+                    <option value="eu">Europe (EU)</option>
+                    <option value="ru">Russia (RU)</option>
+                    <option value="tw">Taiwan (TW)</option>
+                </select>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="guildApi('info')"    class="btn-op btn-util">ℹ️ INFO</button>
+                    <button onclick="guildApi('members')" class="btn-op btn-util">👥 MEMBERS</button>
+                    <button onclick="guildApi('join')"    class="btn-op btn-util" style="color:var(--green); border-color:rgba(74,222,128,0.22);">▶ JOIN</button>
+                    <button onclick="guildApi('leave')"   class="btn-op btn-util" style="color:var(--red);   border-color:rgba(248,113,113,0.22);">⬅ LEAVE</button>
+                </div>
+            </div>
+        </div>
+        <div id="clan-result" class="card-bg p-4 min-h-[100px] text-xs overflow-y-auto font-mono text-gray-400"></div>
+    </div>
+
+    <!-- ▓ PAGE: ADMIN ▓ -->
+    <div id="page-admin" class="hidden space-y-4">
+        <div class="card-bg p-6" style="border-top:2px solid var(--purple);">
+            <h3 class="font-bold mb-4 uppercase text-xs tracking-widest" style="color:var(--sky); font-family:'Share Tech Mono',monospace;">🛠️ Master Admin Panel</h3>
+
+            <div id="admin-login-sec">
+                <input id="adm-pw" type="password" placeholder="Admin Passkey"
+                    class="w-full p-4 rounded-xl mb-3 text-center tracking-widest">
+                <button onclick="adminAction()" class="btn-op w-full"
+                    style="color:var(--sky); background:rgba(56,189,248,0.08); border-color:rgba(56,189,248,0.30);">🔐 LOGIN ADMIN</button>
+            </div>
+
+            <div id="admin-config-sec" class="hidden space-y-5">
+
+                <!-- ── Global Duration ── -->
+                <div class="p-4 bg-black/60 rounded-2xl border" style="border-color:rgba(56,189,248,0.10);">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-[9px] uppercase tracking-wider" style="color:#1e4060; font-family:'Share Tech Mono',monospace;">⏱ Global Duration (Min)</p>
+                        <p class="text-[10px] font-bold" style="color:var(--sky); font-family:'Share Tech Mono',monospace;">Active: <span id="current-global-time">--</span>m</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="new-duration" type="number" placeholder="Enter minutes" class="w-2/3 rounded-lg p-2 text-xs">
+                        <button onclick="saveGlobal()" class="w-1/3 rounded-lg text-[10px] font-bold"
+                            style="background:rgba(56,189,248,0.18); color:var(--sky); border:1px solid rgba(56,189,248,0.35);">SET</button>
+                    </div>
+                </div>
+
+                <!-- ── Tabs ── -->
+                <div class="flex gap-2">
+                    <button onclick="adminTab('users')" id="adm-tab-users"
+                        class="flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                        style="background:rgba(56,189,248,0.18); color:var(--sky); border:1px solid rgba(56,189,248,0.35);">👥 Users</button>
+                    <button onclick="adminTab('blocked')" id="adm-tab-blocked"
+                        class="flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all text-gray-500"
+                        style="border:1px solid rgba(248,113,113,0.15);">🚫 Blocked</button>
+                </div>
+
+                <!-- ── Active Users Tab ── -->
+                <div id="adm-sec-users">
+                    <p class="text-[10px] font-bold uppercase px-1 mb-2" style="color:var(--sky); font-family:'Share Tech Mono',monospace;">⚡ Active / All Users</p>
+                    <div id="active-user-list" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- ── Blocked Users Tab ── -->
+                <div id="adm-sec-blocked" class="hidden">
+                    <p class="text-[10px] font-bold uppercase px-1 mb-2" style="color:var(--red); font-family:'Share Tech Mono',monospace;">🚫 Blocked Users</p>
+                    <div id="blocked-user-list" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script>
+    const socket = io();
+    let countdown;
+
+    /* ── Menu ── */
+    function toggleMenu() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('overlay').classList.toggle('active');
+    }
+
+    /* ── Page nav ── */
+    function showPage(p) {
+        ['control','accounts','friends','clan','admin'].forEach(pg => {
+            const el = document.getElementById('page-'+pg);
+            if(el) el.classList.add('hidden');
+            const m = document.getElementById('m-'+pg);
+            if(m){ m.classList.remove('active-tab'); m.style.color=''; }
+        });
+        const act = document.getElementById('page-'+p);
+        if(act){ act.classList.remove('hidden'); act.classList.add('page-in'); }
+        const mact = document.getElementById('m-'+p);
+        if(mact){ mact.classList.add('active-tab'); mact.style.color='var(--sky)'; }
+
+        const titles = { control:'⚡ Control Panel', accounts:'👥 Accounts', friends:'👤 Friends', clan:'🛡️ Clan Search', admin:'🛠️ Admin Panel' };
+        document.getElementById('page-title').innerText = titles[p] || p;
+
+        if(window.innerWidth < 1024 && document.getElementById('sidebar').classList.contains('active')) toggleMenu();
+    }
+
+    /* ── Friends tab ── */
+    function tabFriend(type) {
+        document.getElementById('sec-check').classList.toggle('hidden', type !== 'check');
+        document.getElementById('sec-add').classList.toggle('hidden',   type !== 'add');
+        const on  = 'flex-1 py-2 rounded-lg text-xs font-bold border';
+        const off = 'flex-1 py-2 rounded-lg text-gray-500 text-xs font-bold';
+        const onStyle  = 'background:rgba(56,189,248,0.18); color:var(--sky); border-color:rgba(56,189,248,0.35);';
+        const offStyle = '';
+        document.getElementById('tab-check').className = type==='check' ? on  : off;
+        document.getElementById('tab-check').style.cssText = type==='check' ? onStyle : offStyle;
+        document.getElementById('tab-add').className  = type==='add'   ? on  : off;
+        document.getElementById('tab-add').style.cssText  = type==='add'   ? onStyle : offStyle;
+    }
+
+    /* ── Toast ── */
+    function msg(t) {
+        const e = document.getElementById('toast');
+        e.innerText = t; e.classList.add('show');
+        setTimeout(() => e.classList.remove('show'), 3000);
+    }
+
+    /* ── Save account ── */
+    function saveAcc() {
+        const name=document.getElementById('name').value,
+              uid =document.getElementById('uid').value,
+              pw  =document.getElementById('pw').value;
+        if(!name||!uid||!pw) return msg("⚠ FILL ALL FIELDS!");
+        localStorage.setItem('bot_name',name);
+        localStorage.setItem('bot_uid', uid);
+        localStorage.setItem('bot_pw',  pw);
+        msg("✅ CONFIGURATION SAVED!");
+        checkIfBlocked();
+    }
+
+    /* ── Bot control ── */
+    async function control(act) {
+        const name=localStorage.getItem('bot_name'),
+              uid =localStorage.getItem('bot_uid'),
+              pw  =localStorage.getItem('bot_pw');
+        if(!name) return msg("⚠ SETUP ACCOUNT FIRST!");
+
+        // Check if blocked
+        if(isBlocked && isBlocked(uid||name)) {
+            showBlockedScreen();
+            return;
+        }
+
+        // Check if bot stopped by admin
+        if(act === 'start' && getStoppedList && getStoppedList().includes(uid||name)) {
+            msg("⛔ YOUR BOT HAS BEEN STOPPED BY ADMIN!");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/control',{
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({action:act, name, uid, password:pw})
+            });
+            const d = await res.json();
+            msg(d.message || (d.status==='success'?'✅ DONE':'❌ FAILED'));
+            if(d.status==='success'){
+                updateStat(d.running, d.rem_sec);
+                if(act==='start' || (act==='restart' && d.running)){
+                    const logs = document.getElementById('logs');
+                    const banner = document.createElement('div');
+                    banner.style.cssText = 'margin:10px 0 6px 0;padding:12px 8px;text-align:center;font-family:Orbitron,monospace;font-size:13px;font-weight:900;letter-spacing:2px;color:#4ade80;text-shadow:0 0 16px #4ade80,0 0 32px rgba(74,222,128,0.6);border:1px solid rgba(74,222,128,0.35);border-radius:8px;background:rgba(13,46,33,0.55);animation:logIn 0.3s ease;line-height:1.7;';
+                    banner.innerHTML = '<div style="font-size:8px;letter-spacing:3px;color:rgba(74,222,128,0.5);margin-bottom:5px;">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>✅ KAWSAR_CODEX BOT<br>STARTING SUCCESSFUL<div style="font-size:8px;letter-spacing:3px;color:rgba(74,222,128,0.5);margin-top:5px;">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>';
+                    logs.appendChild(banner);
+                    logs.scrollTop = logs.scrollHeight;
+                }
+            }
+        } catch(e){ msg("❌ SERVER ERROR"); }
+    }
+
+    /* ── Status update ── */
+    function updateStat(run, rem=0) {
+        const el  = document.getElementById('stext');
+        const tmr = document.getElementById('timer-display');
+        if(run){
+            el.innerText = 'Running';
+            el.className = 'text-xs font-bold uppercase running';
+            el.style.color = 'var(--green)';
+            tmr.classList.add('active');
+            startTimer(Math.floor(rem));
+        } else {
+            el.innerText = 'Stopped';
+            el.className = 'text-red-500 text-xs font-bold uppercase';
+            el.style.color = '';
+            tmr.classList.remove('active');
+            clearInterval(countdown);
+            document.getElementById('timer-display').innerText = '0h 0m 0s';
+        }
+    }
+
+    /* ── Timer ── */
+    function startTimer(sec) {
+        clearInterval(countdown);
+        if(sec<=0 && sec!==-1) return;
+        function tick(){
+            if(sec===-1){ document.getElementById('timer-display').innerText='Unlimited'; return; }
+            if(sec<=0){ clearInterval(countdown); updateStat(false); return; }
+            let h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+            document.getElementById('timer-display').innerText=`${h}h ${m}m ${s}s`;
+            sec--;
+        }
+        tick(); countdown=setInterval(tick,1000);
+    }
+
+    /* ── Guild API ── */
+    async function guildApi(type) {
+        const gid=document.getElementById('guild-id').value,
+              reg=document.getElementById('region').value,
+              uid=localStorage.getItem('bot_uid'),
+              pw =localStorage.getItem('bot_pw'),
+              box=document.getElementById('clan-result');
+        if(!gid) return msg("⚠ ENTER GUILD ID!");
+        box.innerHTML = `<p class='animate-pulse text-center mt-4 font-mono text-xs' style='color:var(--sky);'>[SYSTEM] FETCHING DATA...</p>`;
+        try {
+            const resp=await fetch(`/api/proxy_guild?type=${type}&guild_id=${gid}&region=${reg}&uid=${uid}&password=${pw}`);
+            const data=await resp.json();
+            if(type==='info'){
+                box.innerHTML=`<div class='text-center p-3 rounded-xl' style='background:rgba(0,5,10,0.8); border:1px solid rgba(56,189,248,0.15);'>
+                    <p class='text-[9px] uppercase tracking-widest mb-1' style='color:#1e4060; font-family:"Share Tech Mono",monospace;'>Clan Name</p>
+                    <h2 class='text-lg font-bold rgb-text'>${data.guild_name||data.name||'N/A'}</h2>
+                    <div class='flex justify-center gap-4 mt-2'>
+                        <span style='color:var(--sky); font-weight:700;'>LVL: ${data.guild_level||0}</span>
+                        <span style='color:var(--sky2); font-weight:700;'>Glory: ${data.guild_glory||0}</span>
+                    </div></div>`;
+            } else if(type==='members'){
+                const members=data.members||data.member_list||data.list;
+                if(!members||!members.length){ box.innerHTML="<p class='text-center text-gray-500 py-4'>No members found</p>"; return; }
+                let h=`<div class='overflow-x-auto'><table class='w-full text-[10px] text-left border-collapse'>
+                    <thead><tr style='border-bottom:1px solid rgba(56,189,248,0.12); color:#1e4060;'>
+                        <th class='pb-2 pl-1 font-mono'>NAME</th><th class='pb-2 text-center font-mono'>LVL</th><th class='pb-2 text-right pr-1 font-mono'>GLORY</th>
+                    </tr></thead><tbody>`;
+                members.forEach(m=>{
+                    h+=`<tr style='border-bottom:1px solid rgba(56,189,248,0.05);' class='hover:bg-white/5 transition'>
+                        <td class='py-2 font-bold pl-1' style='color:#9dd8f0;'>${m.nickname||m.name||'?'}</td>
+                        <td class='py-2 text-center' style='color:var(--sky);'>${m.level||0}</td>
+                        <td class='py-2 text-right pr-1' style='color:var(--sky2);'>${m.glory||0}</td>
+                    </tr>`;
+                });
+                box.innerHTML=h+'</tbody></table></div>';
+            } else {
+                box.innerHTML=`<div class='text-center p-4 font-mono' style='color:var(--green);'>✅ ${type.toUpperCase()} SUCCESSFUL</div>`;
+                msg(`✅ ${type.toUpperCase()} EXECUTED!`);
+            }
+        } catch(e){ box.innerHTML="<p class='text-center py-4 font-mono' style='color:var(--red);'>[ERROR] API FAILED</p>"; }
+    }
+
+    /* ── Admin Tab Switch ── */
+    function adminTab(tab) {
+        document.getElementById('adm-sec-users').classList.toggle('hidden', tab !== 'users');
+        document.getElementById('adm-sec-blocked').classList.toggle('hidden', tab !== 'blocked');
+        const uBtn = document.getElementById('adm-tab-users');
+        const bBtn = document.getElementById('adm-tab-blocked');
+        if(tab === 'users') {
+            uBtn.style.cssText = 'background:rgba(56,189,248,0.18); color:var(--sky); border:1px solid rgba(56,189,248,0.35);';
+            uBtn.classList.remove('text-gray-500');
+            bBtn.style.cssText = 'border:1px solid rgba(248,113,113,0.15);';
+            bBtn.classList.add('text-gray-500');
+        } else {
+            bBtn.style.cssText = 'background:rgba(248,113,113,0.15); color:var(--red); border:1px solid rgba(248,113,113,0.40);';
+            bBtn.classList.remove('text-gray-500');
+            uBtn.style.cssText = 'border:1px solid rgba(56,189,248,0.15);';
+            uBtn.classList.add('text-gray-500');
+            renderBlockedUsers();
+        }
+    }
+
+    /* ── Admin Login ── */
+    async function adminAction() {
+        const pass=document.getElementById('adm-pw').value;
+        try {
+            const res=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',password:pass})});
+            const d=await res.json();
+            if(d.status==='success'){
+                document.getElementById('admin-login-sec').classList.add('hidden');
+                document.getElementById('admin-config-sec').classList.remove('hidden');
+                if(d.global_duration) document.getElementById('current-global-time').innerText=d.global_duration;
+                renderActiveUsers(d.users);
+            } else msg("❌ INVALID PASSKEY!");
+        } catch(e){ msg("❌ AUTH FAILED"); }
+    }
+
+    /* ── Blocked List Storage ── */
+    function getBlockedList() {
+        try { return JSON.parse(localStorage.getItem('kc_blocked_users') || '[]'); } catch(e){ return []; }
+    }
+    function saveBlockedList(list) {
+        localStorage.setItem('kc_blocked_users', JSON.stringify(list));
+    }
+    function isBlocked(uid) {
+        return getBlockedList().some(u => u.uid === uid || u.name === uid);
+    }
+
+    /* ── Stopped Bots Storage ── */
+    function getStoppedList() {
+        try { return JSON.parse(localStorage.getItem('kc_stopped_users') || '[]'); } catch(e){ return []; }
+    }
+    function saveStoppedList(list) {
+        localStorage.setItem('kc_stopped_users', JSON.stringify(list));
+    }
+
+    /* ── Render Active Users ── */
+    function renderActiveUsers(users) {
+        const c=document.getElementById('active-user-list');
+        c.innerHTML=!users||users.length===0
+            ?'<p class="text-center py-4 font-mono" style="color:#1e3a50; font-size:10px;">NO ACTIVE SESSIONS</p>'
+            :'';
+        (users||[]).forEach(u=>{
+            const blocked = isBlocked(u.uid||u.name);
+            const stopped = getStoppedList().includes(u.uid||u.name);
+            c.innerHTML+=`<div class='rounded-xl mb-2 overflow-hidden' style='background:rgba(56,189,248,0.03); border:1px solid ${blocked?'rgba(248,113,113,0.30)':'rgba(56,189,248,0.10)'};'>
+                <!-- Info Row -->
+                <div class='p-3 pb-2'>
+                    <div class='flex justify-between items-start mb-1'>
+                        <div>
+                            <p style='font-size:12px;font-weight:700;color:#9dd8f0;letter-spacing:1px;'>${u.name||'Unknown'}</p>
+                            ${blocked?`<span style='font-size:8px;color:var(--red);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>🚫 BLOCKED</span>`
+                            : stopped?`<span style='font-size:8px;color:var(--orange);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>⛔ BOT STOPPED</span>`
+                            : `<span style='font-size:8px;color:var(--green);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>✅ ACTIVE · ${u.rem_min||0}m left</span>`}
+                        </div>
+                        <div style='text-align:right;'>
+                            <p style='font-size:8px;color:rgba(56,189,248,0.4);font-family:"Share Tech Mono",monospace;'>UID</p>
+                            <p style='font-size:10px;color:var(--sky2);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>${u.uid||'N/A'}</p>
+                        </div>
+                    </div>
+                    <!-- Password row -->
+                    <div class='flex items-center gap-2 mt-1' style='background:rgba(0,0,0,0.3);border-radius:6px;padding:5px 8px;'>
+                        <span style='font-size:8px;color:rgba(56,189,248,0.4);font-family:"Share Tech Mono",monospace;'>PW:</span>
+                        <span id='pw-${u.uid||u.name}' style='font-size:10px;color:var(--purple);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>••••••••</span>
+                        <button onclick="togglePw('${u.uid||u.name}','${u.password||u.pw||''}')"
+                            style='font-size:8px;color:rgba(56,189,248,0.5);background:none;border:none;cursor:pointer;margin-left:auto;'>👁</button>
+                    </div>
+                </div>
+                <!-- Action Buttons -->
+                <div class='grid grid-cols-3 gap-1 p-2 pt-0'>
+                    <button onclick="editUserTime('${u.name}')"
+                        class='btn-op btn-util' style='width:auto;padding:6px 4px;font-size:9px;'>⏱ TIME</button>
+                    <button onclick="adminStopBot('${u.uid||u.name}','${u.name}')"
+                        class='btn-op' style='width:auto;padding:6px 4px;font-size:9px;color:var(--orange);background:rgba(40,20,5,0.7);border:1px solid rgba(251,146,60,0.30);'>
+                        ${stopped?'▶ RESUME':'⛔ STOP BOT'}</button>
+                    <button onclick="adminBlockUser('${u.uid||u.name}','${u.name}','${u.password||u.pw||''}')"
+                        class='btn-op' style='width:auto;padding:6px 4px;font-size:9px;${blocked?'color:var(--green);background:rgba(13,46,33,0.7);border:1px solid rgba(74,222,128,0.30);':'color:var(--red);background:rgba(36,10,10,0.7);border:1px solid rgba(248,113,113,0.30);'}'>
+                        ${blocked?'🔓 UNBLOCK':'🚫 BLOCK'}</button>
+                </div>
+            </div>`;
+        });
+    }
+
+    /* ── Render Blocked Users ── */
+    function renderBlockedUsers() {
+        const c = document.getElementById('blocked-user-list');
+        const list = getBlockedList();
+        c.innerHTML = list.length === 0
+            ? '<p class="text-center py-4 font-mono" style="color:#1e3a50; font-size:10px;">NO BLOCKED USERS</p>'
+            : '';
+        list.forEach(u => {
+            c.innerHTML += `<div class='p-3 rounded-xl mb-1 flex justify-between items-center'
+                style='background:rgba(248,113,113,0.04); border:1px solid rgba(248,113,113,0.20);'>
+                <div>
+                    <p style='font-size:11px;font-weight:700;color:#f87171;letter-spacing:1px;'>🚫 ${u.name}</p>
+                    <p style='font-size:9px;color:rgba(248,113,113,0.5);font-family:"Share Tech Mono",monospace;'>UID: ${u.uid}</p>
+                </div>
+                <button onclick="adminUnblockUser('${u.uid}','${u.name}')"
+                    class='btn-op' style='width:auto;padding:6px 12px;font-size:9px;color:var(--green);
+                    background:rgba(13,46,33,0.7);border:1px solid rgba(74,222,128,0.30);'>🔓 UNBLOCK</button>
+            </div>`;
+        });
+    }
+
+    /* ── Toggle Password Visibility ── */
+    function togglePw(id, pw) {
+        const el = document.getElementById('pw-'+id);
+        if(!el) return;
+        el.innerText = el.innerText === '••••••••' ? (pw || 'N/A') : '••••••••';
+    }
+
+    /* ── Block User ── */
+    function adminBlockUser(uid, name, pw) {
+        const list = getBlockedList();
+        const exists = list.findIndex(u => u.uid === uid);
+        if(exists > -1) {
+            adminUnblockUser(uid, name);
+            return;
+        }
+        if(!confirm(`Block user "${name}" (UID: ${uid})?\nThey will see a BLOCKED screen when they visit.`)) return;
+        list.push({ uid, name, pw, blockedAt: new Date().toISOString() });
+        saveBlockedList(list);
+        msg(`🚫 ${name} BLOCKED!`);
+        adminAction();
+    }
+
+    /* ── Unblock User ── */
+    function adminUnblockUser(uid, name) {
+        if(!confirm(`Unblock "${name}"?`)) return;
+        const list = getBlockedList().filter(u => u.uid !== uid);
+        saveBlockedList(list);
+        msg(`✅ ${name} UNBLOCKED!`);
+        adminAction();
+        renderBlockedUsers();
+    }
+
+    /* ── Stop/Resume Bot ── */
+    async function adminStopBot(uid, name) {
+        const stopped = getStoppedList();
+        const isStopped = stopped.includes(uid);
+        if(!confirm(`${isStopped ? 'Resume' : 'Force stop'} bot for "${name}"?`)) return;
+        const pass = document.getElementById('adm-pw').value;
+        if(isStopped) {
+            saveStoppedList(stopped.filter(u => u !== uid));
+            msg(`▶ ${name} BOT RESUMED!`);
+        } else {
+            const newList = [...stopped, uid];
+            saveStoppedList(newList);
+            try {
+                await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({action:'stop_user',user:name,password:pass})});
+            } catch(e){}
+            msg(`⛔ ${name} BOT STOPPED!`);
+        }
+        adminAction();
+    }
+
+    function renderActiveUsers(users) {
+        const c=document.getElementById('active-user-list');
+        c.innerHTML=!users||users.length===0
+            ?'<p class="text-center py-4 font-mono" style="color:#1e3a50; font-size:10px;">NO ACTIVE SESSIONS</p>'
+            :'';
+        (users||[]).forEach(u=>{
+            const blocked = isBlocked(u.uid||u.name);
+            const stoppedList = getStoppedList();
+            const stopped = stoppedList.includes(u.uid||u.name);
+            c.innerHTML+=`<div class='rounded-xl mb-2 overflow-hidden' style='background:rgba(56,189,248,0.03); border:1px solid ${blocked?'rgba(248,113,113,0.30)':'rgba(56,189,248,0.10)'};'>
+                <div class='p-3 pb-2'>
+                    <div class='flex justify-between items-start mb-1'>
+                        <div>
+                            <p style='font-size:12px;font-weight:700;color:#9dd8f0;letter-spacing:1px;'>${u.name||'Unknown'}</p>
+                            ${blocked?`<span style='font-size:8px;color:var(--red);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>🚫 BLOCKED</span>`
+                            : stopped?`<span style='font-size:8px;color:var(--orange);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>⛔ BOT STOPPED</span>`
+                            : `<span style='font-size:8px;color:var(--green);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>✅ ACTIVE · ${u.rem_min||0}m left</span>`}
+                        </div>
+                        <div style='text-align:right;'>
+                            <p style='font-size:8px;color:rgba(56,189,248,0.4);font-family:"Share Tech Mono",monospace;'>UID</p>
+                            <p style='font-size:10px;color:var(--sky2);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>${u.uid||'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class='flex items-center gap-2 mt-1' style='background:rgba(0,0,0,0.3);border-radius:6px;padding:5px 8px;'>
+                        <span style='font-size:8px;color:rgba(56,189,248,0.4);font-family:"Share Tech Mono",monospace;'>PW:</span>
+                        <span id='pw-${u.uid||u.name}' style='font-size:10px;color:var(--purple);font-family:"Share Tech Mono",monospace;letter-spacing:1px;'>••••••••</span>
+                        <button onclick="togglePw('${u.uid||u.name}','${u.password||u.pw||''}')"
+                            style='font-size:8px;color:rgba(56,189,248,0.5);background:none;border:none;cursor:pointer;margin-left:auto;'>👁</button>
+                    </div>
+                </div>
+                <div class='grid grid-cols-3 gap-1 p-2 pt-0'>
+                    <button onclick="editUserTime('${u.name}')"
+                        class='btn-op btn-util' style='width:auto;padding:6px 4px;font-size:9px;'>⏱ TIME</button>
+                    <button onclick="adminStopBot('${u.uid||u.name}','${u.name}')"
+                        class='btn-op' style='width:auto;padding:6px 4px;font-size:9px;color:var(--orange);background:rgba(40,20,5,0.7);border:1px solid rgba(251,146,60,0.30);'>
+                        ${stopped?'▶ RESUME':'⛔ STOP BOT'}</button>
+                    <button onclick="adminBlockUser('${u.uid||u.name}','${u.name}','${u.password||u.pw||''}')"
+                        class='btn-op' style='width:auto;padding:6px 4px;font-size:9px;${blocked?'color:var(--green);background:rgba(13,46,33,0.7);border:1px solid rgba(74,222,128,0.30);':'color:var(--red);background:rgba(36,10,10,0.7);border:1px solid rgba(248,113,113,0.30);'}'>
+                        ${blocked?'🔓 UNBLOCK':'🚫 BLOCK'}</button>
+                </div>
+            </div>`;
+        });
+    }
+
+    async function editUserTime(name) {
+        const m=prompt(`Add minutes for ${name}:`); if(!m) return;
+        const pass=document.getElementById('adm-pw').value;
+        await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'update_user_time',user:name,mins:m,password:pass})});
+        adminAction(); msg("⏱ TIME UPDATED!");
+    }
+
+    async function saveGlobal() {
+        const dur=document.getElementById('new-duration').value,pass=document.getElementById('adm-pw').value;
+        if(!dur) return msg("⚠ ENTER DURATION!");
+        const res=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save_global',duration:dur,password:pass})});
+        const d=await res.json();
+        if(d.status==='success'){ msg("✅ DURATION UPDATED!"); document.getElementById('current-global-time').innerText=dur; document.getElementById('new-duration').value=''; }
+    }
+
+    async function fetchFriendList() {
+        const u=localStorage.getItem('bot_uid'),p=localStorage.getItem('bot_pw');
+        const box=document.getElementById('nickname-list');
+        if(!u||!p) return msg("⚠ ACCOUNT NOT CONFIGURED!");
+        box.innerHTML="<p class='col-span-2 text-center text-[9px] animate-pulse' style='color:var(--sky);'>⟳ LOADING...</p>";
+        try {
+            const r=await fetch(`https://danger-friend-manager.vercel.app/get_friends_list?uid=${u}&password=${p}`);
+            const d=await r.json(); box.innerHTML='';
+            if(d.friends&&d.friends.length>0)
+                d.friends.forEach(f=>box.innerHTML+=`<div class='p-2 rounded text-[9px] truncate' style='background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.12);'>👤 ${f.nickname}</div>`);
+            else box.innerHTML="<p class='col-span-2 text-center text-gray-600 py-2'>Empty List</p>";
+        } catch(e){ msg("❌ FETCH FAILED"); box.innerHTML=''; }
+    }
+
+    async function addFriend() {
+        const target=document.getElementById('target-uid').value;
+        if(!target) return msg("⚠ ENTER TARGET UID!");
+        msg("📤 REQUEST SENT!");
+    }
+
+    async function checkLiveStatus() {
+        const name=localStorage.getItem('bot_name'); if(!name) return;
+        try {
+            const res=await fetch('/api/check_status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+            const d=await res.json();
+            if(d.running) updateStat(true, d.rem_sec);
+        } catch(e){}
+    }
+
+    /* ── Socket ── */
+    socket.on('new_log', (m) => {
+        if(m.user===localStorage.getItem('bot_name')){
+            const l=document.getElementById('logs');
+            const d=document.createElement('div');
+            d.className='log-entry';
+            d.style.color='#8ec8d8';
+            d.innerText=`[${new Date().toLocaleTimeString()}] ${m.data}`;
+            l.appendChild(d); l.scrollTop=l.scrollHeight;
+        }
+    });
+    socket.on('time_sync', (data)=>{ if(data.user===localStorage.getItem('bot_name')) startTimer(data.rem_sec); });
+    socket.on('status_update', (data)=>{ if(data.user===localStorage.getItem('bot_name')) updateStat(data.running); });
+
+    /* ── Particles ── */
+    function initParticles() {
+        const cont=document.getElementById('particles');
+        for(let i=0;i<30;i++){
+            const p=document.createElement('div'); p.className='ptc';
+            const s=Math.random()*2.5+1;
+            const blue=Math.random()>0.3;
+            p.style.cssText=`width:${s}px;height:${s}px;left:${Math.random()*100}vw;
+                animation-delay:${Math.random()*22}s;animation-duration:${Math.random()*16+14}s;
+                background:${blue?'var(--sky)':'var(--sky2)'};
+                box-shadow:0 0 ${s*3}px ${blue?'var(--sky)':'var(--sky2)'};`;
+            cont.appendChild(p);
+        }
+    }
+
+    /* ── Data rain ── */
+    function initRain() {
+        for(let i=0;i<10;i++){
+            const l=document.createElement('div'); l.className='rain-line';
+            const h=Math.random()*160+60;
+            l.style.cssText=`left:${Math.random()*100}vw;height:${h}px;
+                animation-delay:${Math.random()*12}s;animation-duration:${Math.random()*6+5}s;`;
+            document.body.appendChild(l);
+        }
+    }
+
+    /* ── Check & Show Blocked Screen ── */
+    function showBlockedScreen() {
+        const s = document.getElementById('blocked-screen');
+        s.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function checkIfBlocked() {
+        const uid  = localStorage.getItem('bot_uid');
+        const name = localStorage.getItem('bot_name');
+        if(!uid && !name) return;
+        const blocked = getBlockedList();
+        const found = blocked.some(u => u.uid === uid || u.name === name);
+        if(found) showBlockedScreen();
+    }
+
+    /* ── Init ── */
+    window.onload = () => {
+        document.getElementById('name').value = localStorage.getItem('bot_name') || '';
+        document.getElementById('uid').value  = localStorage.getItem('bot_uid')  || '';
+        document.getElementById('pw').value   = localStorage.getItem('bot_pw')   || '';
+        checkIfBlocked();
+        checkLiveStatus();
+        initParticles();
+        initRain();
+        setTimeout(()=>msg("⚡ KAWSAR_CODEX ONLINE"), 700);
+    };
+</script>
+</body>
+</html>
